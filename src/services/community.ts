@@ -205,7 +205,10 @@ export async function createPost(draft: PostDraft): Promise<Post> {
   draft.attachments.forEach((file) => {
     body.append('attachments[]', file, file.name)
   })
-  console.log(xsrfHeaders());
+  const headers = xsrfHeaders()
+
+  console.log(headers['X-XSRF-TOKEN'])
+  console.log(document.cookie)
   const response = await fetch(`${apiBaseUrl}/posts`, {
     method: 'POST',
     credentials: 'include',
