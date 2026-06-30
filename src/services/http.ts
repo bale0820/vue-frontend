@@ -1,5 +1,5 @@
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
-
+export const backendUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8000'
 let csrfReady = false
 
 export async function ensureCsrfCookie() {
@@ -7,7 +7,7 @@ export async function ensureCsrfCookie() {
     return
   }
 
-  const response = await fetch('/sanctum/csrf-cookie', {
+  const response = await fetch(`${backendUrl}/sanctum/csrf-cookie`, {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
