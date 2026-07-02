@@ -1,5 +1,7 @@
-import { apiBaseUrl, ensureCsrfCookie, resetCsrfCookieState, xsrfHeaders } from './http'
-
+import {  ensureCsrfCookie, resetCsrfCookieState } from './http'
+import api from './api';
+import axios from 'axios';
+import type { AxiosResponse } from 'axios'
 const backendUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8000'
 
 export type User = {
@@ -18,10 +20,13 @@ export type RegisterPayload = LoginPayload & {
   name: string
 }
 
-async function parseAuthResponse(response: Response): Promise<User> {
-  const data = (await response.json()) as { data?: User; message?: string }
 
-  if (!response.ok || !data.data) {
+function parseAuthResponse(
+  response: AxiosResponse<{ data?: User; message?: string }>
+): User {
+  const data = response.data
+
+  if (!data.data) {
     throw new Error(data.message ?? '인증 요청을 처리하지 못했습니다.')
   }
 
@@ -29,67 +34,43 @@ async function parseAuthResponse(response: Response): Promise<User> {
 }
 
 export async function fetchCurrentUser(): Promise<User | null> {
-  const response = await fetch(`${apiBaseUrl}/auth/me`, {
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
+    try {
+    const response = await api.get('/auth/me');
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      return null;
+    }
 
-  if (response.status === 401) {
-    return null
+    throw error;
   }
-
-  return parseAuthResponse(response)
 }
 
 export async function login(payload: LoginPayload): Promise<User> {
   await ensureCsrfCookie()
 
-  const response = await fetch(`${apiBaseUrl}/auth/login`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...xsrfHeaders(),
-    },
-    body: JSON.stringify(payload),
-  })
+  const response = await api.post(
+    `/auth/login`,
+    payload
+  )
 
-  return parseAuthResponse(response)
+  return response.data 
 }
 
 export async function register(payload: RegisterPayload): Promise<User> {
   await ensureCsrfCookie()
 
-  const response = await fetch(`${apiBaseUrl}/auth/register`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...xsrfHeaders(),
-    },
-    body: JSON.stringify(payload),
-  })
+  const response = await api.post(`/auth/register`, payload)
 
-  return parseAuthResponse(response)
+  return parseAuthResponse(response.data)
 }
 
 export async function logout() {
   await ensureCsrfCookie()
 
-  const response = await fetch(`${apiBaseUrl}/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...xsrfHeaders(),
-    },
-  })
+  const response = await api.post(`/auth/logout`);
 
-  if (!response.ok) {
+  if (!response.data.ok) {
     throw new Error('로그아웃하지 못했습니다.')
   }
 

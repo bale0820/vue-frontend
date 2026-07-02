@@ -1,4 +1,6 @@
-import { apiBaseUrl, ensureCsrfCookie, xsrfHeaders } from './http'
+import axios from 'axios'
+import api from './api'
+import { ensureCsrfCookie } from './http'
 
 export type PostAttachment = {
   path: string
@@ -50,7 +52,7 @@ export const demoPosts: Post[] = [
     userId: null,
     title: 'Laravel API와 Vue 화면은 어떤 방식으로 나누면 좋을까요?',
     excerpt:
-      '인증은 Sanctum, 게시글은 REST API로 시작하려고 합니다. 폴더 구조와 라우팅 전략이 궁금합니다.',
+      '인증은 Sanctum, 게시글은 REST API로 시작하려고 합니다. 폴더 구조와 호출 흐름이 궁금합니다.',
     author: 'backend-kim',
     category: 'Laravel',
     imageUrl: null,
@@ -66,7 +68,7 @@ export const demoPosts: Post[] = [
   {
     id: 2,
     userId: null,
-    title: 'PostgreSQL 인덱스가 실제로 쓰이는지 확인하는 팁',
+    title: 'PostgreSQL 인덱스가 실제로 데이터에 적용되는지 확인하는 법',
     excerpt:
       'EXPLAIN ANALYZE 결과를 볼 때 초보자가 놓치기 쉬운 부분들을 정리해봤습니다.',
     author: 'query-plan',
@@ -101,26 +103,29 @@ export const demoPosts: Post[] = [
   },
 ]
 
-async function requestJson<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    credentials: 'include',
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      ...(options.headers ?? {}),
-    },
-  })
-
-  if (!response.ok) {
-    const errorData = (await response.json().catch(() => null)) as { message?: string } | null
-    throw new Error(errorData?.message ?? '요청을 처리하지 못했습니다.')
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message ?? fallback
   }
 
-  return response.json() as Promise<T>
+  return fallback
+}
+
+async function requestJson<T>(path: string): Promise<T> {
+  try {
+    const response = await api.get<T>(path)
+    return response.data
+  } catch (error) {
+    throw new Error(getErrorMessage(error, '요청을 처리하지 못했습니다.'))
+  }
 }
 
 function normalizePostResponse(data: { data?: Post[] } | Post[]): Post[] {
   return Array.isArray(data) ? data : (data.data ?? [])
+}
+
+function normalizePost(data: { data?: Post } | Post): Post {
+  return 'data' in data && data.data ? data.data : (data as Post)
 }
 
 function tagsToArray(tags: string): string[] {
@@ -164,32 +169,22 @@ export async function updatePost(postId: number, payload: PostUpdatePayload): Pr
     body.append('attachments[]', file, file.name)
   })
 
-  const response = await fetch(`${apiBaseUrl}/posts/${postId}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...xsrfHeaders(),
-    },
-    body,
-  })
-
-  if (!response.ok) {
-    const errorData = (await response.json().catch(() => null)) as { message?: string } | null
-    throw new Error(errorData?.message ?? '게시글을 수정하지 못했습니다.')
+  try {
+    const response = await api.post<{ data?: Post } | Post>(`/posts/${postId}`, body)
+    return normalizePost(response.data)
+  } catch (error) {
+    throw new Error(getErrorMessage(error, '게시글을 수정하지 못했습니다.'))
   }
-
-  const data = (await response.json()) as { data?: Post } | Post
-  return 'data' in data && data.data ? data.data : (data as Post)
 }
 
 export async function deletePost(postId: number): Promise<void> {
   await ensureCsrfCookie()
 
-  await requestJson<{ message?: string }>(`/posts/${postId}`, {
-    method: 'DELETE',
-    headers: xsrfHeaders(),
-  })
+  try {
+    await api.delete<{ message?: string }>(`/posts/${postId}`)
+  } catch (error) {
+    throw new Error(getErrorMessage(error, '게시글을 삭제하지 못했습니다.'))
+  }
 }
 
 export async function createPost(draft: PostDraft): Promise<Post> {
@@ -205,33 +200,15 @@ export async function createPost(draft: PostDraft): Promise<Post> {
   draft.attachments.forEach((file) => {
     body.append('attachments[]', file, file.name)
   })
-  const headers = xsrfHeaders()
 
-  console.log(headers['X-XSRF-TOKEN'])
-  console.log(document.cookie)
-  const response = await fetch(`${apiBaseUrl}/posts`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...xsrfHeaders(),
-    },
-    body,
-  })
+  try {
+    const response = await api.post<{ data?: Post } | Post>('/posts', body)
+    return normalizePost(response.data)
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      throw new Error('로그인해야 게시글을 등록할 수 있습니다.')
+    }
 
-  if (response.status === 401) {
-    throw new Error('로그인해야 게시글을 등록할 수 있습니다.')
+    throw new Error(getErrorMessage(error, '게시글을 등록하지 못했습니다.'))
   }
-
-  if (!response.ok) {
-    const errorData = (await response.json().catch(() => null)) as { message?: string } | null
-    throw new Error(errorData?.message ?? '게시글을 등록하지 못했습니다.')
-  }
-
-  const data = (await response.json()) as { data?: Post } | Post
-  if ('data' in data && data.data) {
-    return data.data
-  }
-
-  return data as Post
 }
