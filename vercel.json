@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/community/:path*",
-      "destination": "https://candy-api.duckdns.org/community/:path*"
+      "destination": "https://community-candy-api.duckdns.org/community/:path*"
     }
   ]
 }
