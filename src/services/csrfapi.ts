@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const csrfapi = axios.create({
-  baseURL: '/community',
+  baseURL: '/',
   withCredentials: true,
   // withXSRFToken: true,
   // 명시적으로 지정
