@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/community/:path*",
+      "destination": "https://community-candy-api.duckdns.org/community/:path*"
+    }
+  ]
+}
