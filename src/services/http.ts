@@ -1,4 +1,4 @@
-import api from './api';
+import csrfapi from './csrfapi';
 
 // export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 export const backendUrl = import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8000'
@@ -9,7 +9,7 @@ export async function ensureCsrfCookie() {
     return
   }
 
- await api.get(`/sanctum/csrf-cookie`);
+ await csrfapi.get(`/sanctum/csrf-cookie`);
 
 
   csrfReady = true
