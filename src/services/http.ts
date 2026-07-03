@@ -9,7 +9,7 @@ export async function ensureCsrfCookie() {
     return
   }
 
- await api.get(`${backendUrl}/sanctum/csrf-cookie`);
+ await api.get(`/sanctum/csrf-cookie`);
 
 
   csrfReady = true
