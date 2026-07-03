@@ -19,6 +19,7 @@ import {
   type PostAttachment,
 } from '../services/community'
 import { useAttachmentDraft } from './useAttachmentDraft'
+import api from '../services/api'
 
 type ViewMode = 'feed' | 'my' | 'admin' | 'detail' | 'write' | 'edit'
 
@@ -378,25 +379,59 @@ export function useCommunityApp() {
     posts.value = posts.value.map((item) => (item.id === post.id ? post : item))
   }
 
+  // onMounted(async () => {
+  //   const params = new URLSearchParams(window.location.search)
+
+  //   if (params.get('login') === 'success') {
+  //     apiMessage.value = '소셜 로그인 처리 완료'
+  //     window.history.replaceState({}, document.title, window.location.pathname)
+  //   }
+
+  //   if (params.get('login') === 'provider_error') {
+  //     apiMessage.value = '소셜 로그인 처리 중 오류가 발생했습니다.'
+  //     window.history.replaceState({}, document.title, window.location.pathname)
+  //   }
+
+  //   await Promise.all([loadPosts(), loadCurrentUser()])
+
+  //   if (currentUser.value) {
+  //     apiMessage.value = `${currentUser.value.name}으로 로그인됨`
+  //   }
+  // })
+
+
   onMounted(async () => {
-    const params = new URLSearchParams(window.location.search)
+  const params = new URLSearchParams(window.location.search);
 
-    if (params.get('login') === 'success') {
-      apiMessage.value = '소셜 로그인 처리 완료'
-      window.history.replaceState({}, document.title, window.location.pathname)
+  const code = params.get("code");
+
+  if (code) {
+    try {
+      await api.post(
+        "/auth/social/exchange",
+        { code },
+        {
+          withCredentials: true,
+        }
+      );
+
+      window.history.replaceState({}, "", "/");
+    } catch (e) {
+      console.error(e);
     }
+  }
 
-    if (params.get('login') === 'provider_error') {
-      apiMessage.value = '소셜 로그인 처리 중 오류가 발생했습니다.'
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
+  if (params.get("login") === "provider_error") {
+    apiMessage.value = "소셜 로그인 처리 중 오류가 발생했습니다.";
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 
-    await Promise.all([loadPosts(), loadCurrentUser()])
+  await Promise.all([loadPosts(), loadCurrentUser()]);
 
-    if (currentUser.value) {
-      apiMessage.value = `${currentUser.value.name}으로 로그인됨`
-    }
-  })
+  if (currentUser.value) {
+    apiMessage.value = `${currentUser.value.name}으로 로그인됨`;
+  }
+});
 
   return {
     activeMembers,
