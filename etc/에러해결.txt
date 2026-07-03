@@ -1,0 +1,124 @@
+[왜 /?code=xxxx 는 되고 /social-login?code=xxxx 는 안 되는가]
+
+현재 프로젝트 구조
+
+Vue Router ❌
+App.vue 하나로 동작하는 SPA
+
+--------------------------------------------------
+
+✅ 가능한 URL
+
+https://vue-frontend-seven.vercel.app/?code=xxxx
+
+브라우저
+      ↓
+/
+      ↓
+index.html
+      ↓
+main.ts
+      ↓
+App.vue
+      ↓
+onMounted()
+      ↓
+URL의 code 읽기
+      ↓
+POST /api/auth/social/exchange
+      ↓
+Auth::login()
+session()->regenerate()
+      ↓
+laravel_session 발급
+      ↓
+GET /api/auth/me
+      ↓
+로그인 완료
+
+--------------------------------------------------
+
+❌ 안 되는 URL
+
+https://vue-frontend-seven.vercel.app/social-login?code=xxxx
+
+브라우저
+      ↓
+/social-login 요청
+      ↓
+실제 파일을 찾음
+
+Vue Router ❌
+SPA Rewrite ❌
+
+      ↓
+
+App.vue 실행 안 됨
+main.ts 이후 mount 안 됨
+onMounted() 실행 안 됨
+axios.post() 실행 안 됨
+console.log()도 안 찍힘
+
+--------------------------------------------------
+
+현재 프로젝트에서 가장 적합한 방식
+
+Backend
+
+return redirect(
+    $this->frontendUrl("code={$loginCode}")
+);
+
+↓
+
+https://vue-frontend-seven.vercel.app/?code=xxxxx
+
+↓
+
+App.vue onMounted()
+
+↓
+
+POST /api/auth/social/exchange
+
+↓
+
+새로운 세션 생성
+
+↓
+
+GET /api/auth/me
+
+↓
+
+로그인 완료
+
+--------------------------------------------------
+
+나중에 /social-login 을 사용하고 싶다면
+
+① Vue Router 추가
+
+또는
+
+② Vercel SPA Rewrite 설정
+
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}
+
+중 하나가 반드시 필요하다.
+
+--------------------------------------------------
+
+현재 구조에서는
+
+/?code=xxxxx
+
+방식이 가장 단순하고 안정적이며,
+추가적인 Router 설정 없이 그대로 사용할 수 있다.

@@ -68,11 +68,11 @@ export async function register(payload: RegisterPayload): Promise<User> {
 export async function logout() {
   await ensureCsrfCookie()
 
-  const response = await api.post(`/auth/logout`);
+  await api.post(`/auth/logout`);
 
-  if (!response.data.ok) {
-    throw new Error('로그아웃하지 못했습니다.')
-  }
+  //  if (response.status !== 200) {
+  //   throw new Error("로그아웃하지 못했습니다.");
+  // }
 
   resetCsrfCookieState()
 }
